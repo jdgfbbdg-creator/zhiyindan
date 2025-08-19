@@ -1,6 +1,6 @@
--- 只因脚本 v4.9 完整版
+-- 只因脚本 v0.1.6 （测试版）
 -- 作者：只因蛋
--- 功能：完整飞行控制 + 速度调节 + DOORS脚本 + 墨水游戏 + 可拖动悬浮球 + 可滑动高级设置
+-- 功能：完整飞行控制 + 速度调节 + DOORS脚本 + 墨水游戏 + 可拖动悬浮球 + 可滑动高级设置 + 99夜脚本
 
 -- 服务
 local Players = game:GetService("Players")
@@ -9,17 +9,28 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
 local ContentProvider = game:GetService("ContentProvider")
+local ScreenGuiService = game:GetService("CoreGui"):FindFirstChild("RobloxGui"):FindFirstChild("ScreenGui")
 
 -- 玩家
 local player = Players.LocalPlayer
 
--- 设备检测
+-- 获取屏幕尺寸
+local screenSize = workspace.CurrentCamera.ViewportSize
+local screenWidth, screenHeight = screenSize.X, screenSize.Y
+
+-- 设备检测与UI缩放优化
 local IS_MOBILE = UserInputService.TouchEnabled
 local IS_CONSOLE = UserInputService.GamepadEnabled and not IS_MOBILE
 local IS_DESKTOP = not IS_MOBILE and not IS_CONSOLE
 
--- UI缩放
-local UI_SCALE = IS_MOBILE and 0.8 or 1
+-- 基于屏幕尺寸动态计算UI缩放比例，确保UI不会超出屏幕
+local baseWidth, baseHeight = 1920, 1080  -- 基准分辨率
+local widthScale = screenWidth / baseWidth
+local heightScale = screenHeight / baseHeight
+local UI_SCALE = math.min(widthScale, heightScale) * (IS_MOBILE and 0.9 or 1.0)
+
+-- 限制最小缩放比例，防止UI过小
+UI_SCALE = math.max(UI_SCALE, 0.6)
 
 -- 确保PlayerGui存在
 repeat task.wait() until player:FindFirstChild("PlayerGui")
@@ -74,10 +85,22 @@ BallText.Font = Enum.Font.GothamBold
 BallText.ZIndex = 11
 BallText.Parent = FloatingBall
 
--- ===== 悬浮球拖动功能 =====
+-- ===== 悬浮球拖动功能（增加边界检查）=====
 local isDraggingBall = false
 local dragStartPos
 local ballStartPos
+
+-- 确保悬浮球不会被拖出屏幕
+local function clampBallPosition(position)
+    local ballSize = FloatingBall.AbsoluteSize
+    local maxX = screenWidth - ballSize.X / 2
+    local maxY = screenHeight - ballSize.Y / 2
+    
+    return UDim2.new(
+        0, math.clamp(position.X.Offset, ballSize.X / 2, maxX),
+        0, math.clamp(position.Y.Offset, ballSize.Y / 2, maxY)
+    )
+end
 
 FloatingBall.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -90,12 +113,13 @@ end)
 UserInputService.InputChanged:Connect(function(input)
     if isDraggingBall and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = Vector2.new(input.Position.X, input.Position.Y) - dragStartPos
-        FloatingBall.Position = UDim2.new(
-            ballStartPos.X.Scale, 
-            ballStartPos.X.Offset + delta.X,
-            ballStartPos.Y.Scale, 
-            ballStartPos.Y.Offset + delta.Y
+        local newPosition = UDim2.new(
+            0, ballStartPos.X.Offset + delta.X,
+            0, ballStartPos.Y.Offset + delta.Y
         )
+        
+        -- 应用边界限制
+        FloatingBall.Position = clampBallPosition(newPosition)
     end
 end)
 
@@ -105,10 +129,13 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- ===== 主控制面板 =====
+-- ===== 主控制面板（优化尺寸和位置）=====
+local mainPanelWidth = math.min(500, screenWidth * 0.9) * UI_SCALE
+local mainPanelHeight = math.min(400, screenHeight * 0.8) * UI_SCALE
+
 local MainPanel = Instance.new("Frame")
 MainPanel.Name = "MainPanel"
-MainPanel.Size = UDim2.new(0, 500 * UI_SCALE, 0, 400 * UI_SCALE)
+MainPanel.Size = UDim2.new(0, mainPanelWidth, 0, mainPanelHeight)
 MainPanel.Position = UDim2.new(0.5, 0, 0.5, 0)
 MainPanel.AnchorPoint = Vector2.new(0.5, 0.5)
 MainPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
@@ -221,7 +248,7 @@ AvatarBorder.ImageColor3 = Color3.fromRGB(255, 215, 0)
 AvatarBorder.ZIndex = 22
 AvatarBorder.Parent = AvatarFrame
 
--- 玩家信息文字
+-- 玩家信息文字（优化布局防止溢出）
 local PlayerName = Instance.new("TextLabel")
 PlayerName.Name = "PlayerName"
 PlayerName.Size = UDim2.new(0.6, 0, 0, 20 * UI_SCALE)
@@ -232,6 +259,7 @@ PlayerName.TextColor3 = Color3.fromRGB(255, 255, 255)
 PlayerName.TextSize = 16 * UI_SCALE
 PlayerName.Font = Enum.Font.Gotham
 PlayerName.TextXAlignment = Enum.TextXAlignment.Left
+PlayerName.TextTruncate = Enum.TextTruncate.AtEnd  -- 文本过长时截断
 PlayerName.ZIndex = 22
 PlayerName.Parent = PlayerInfo
 
@@ -248,7 +276,6 @@ WelcomeText.TextXAlignment = Enum.TextXAlignment.Left
 WelcomeText.ZIndex = 22
 WelcomeText.Parent = PlayerInfo
 
--- 白名单状态
 local WhitelistStatus = Instance.new("TextLabel")
 WhitelistStatus.Name = "WhitelistStatus"
 WhitelistStatus.Size = UDim2.new(0.6, 0, 0, 20 * UI_SCALE)
@@ -262,29 +289,45 @@ WhitelistStatus.TextXAlignment = Enum.TextXAlignment.Left
 WhitelistStatus.ZIndex = 22
 WhitelistStatus.Parent = PlayerInfo
 
--- ===== 分类系统 =====
-local CategoryPanel = Instance.new("Frame")
-CategoryPanel.Name = "CategoryPanel"
-CategoryPanel.Size = UDim2.new(0, 120 * UI_SCALE, 0, 250 * UI_SCALE)
-CategoryPanel.Position = UDim2.new(0, 0, 0, 140 * UI_SCALE)
-CategoryPanel.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-CategoryPanel.BackgroundTransparency = 0.1
-CategoryPanel.ZIndex = 21
-CategoryPanel.Parent = MainPanel
+-- ===== 分类系统（优化滚动区域）=====
+local categoryWidth = 120 * UI_SCALE
+local categoryHeight = mainPanelHeight - 140 * UI_SCALE
+
+-- 将左侧分类面板改为可滚动区域
+local CategoryScrollFrame = Instance.new("ScrollingFrame")
+CategoryScrollFrame.Name = "CategoryScrollFrame"
+CategoryScrollFrame.Size = UDim2.new(0, categoryWidth, 0, categoryHeight)
+CategoryScrollFrame.Position = UDim2.new(0, 0, 0, 140 * UI_SCALE)
+CategoryScrollFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+CategoryScrollFrame.BackgroundTransparency = 0.1
+CategoryScrollFrame.ZIndex = 21
+CategoryScrollFrame.ScrollBarThickness = 5  -- 滚动条厚度
+CategoryScrollFrame.ScrollingDirection = Enum.ScrollingDirection.Y  -- 仅垂直滚动
+CategoryScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 360 * UI_SCALE)  -- 画布大小，适应所有按钮
+CategoryScrollFrame.Parent = MainPanel
 
 local CategoryCorner = Instance.new("UICorner")
 CategoryCorner.CornerRadius = UDim.new(0, 10, 0, 0)
-CategoryCorner.Parent = CategoryPanel
+CategoryCorner.Parent = CategoryScrollFrame
 
--- 创建可滚动内容区域
+-- 创建一个容器来放置分类按钮
+local CategoryContainer = Instance.new("Frame")
+CategoryContainer.Name = "CategoryContainer"
+CategoryContainer.Size = UDim2.new(1, 0, 0, 360 * UI_SCALE)  -- 足够容纳所有按钮
+CategoryContainer.Position = UDim2.new(0, 0, 0, 0)
+CategoryContainer.BackgroundTransparency = 1
+CategoryContainer.ZIndex = 22
+CategoryContainer.Parent = CategoryScrollFrame
+
+-- 创建可滚动内容区域（优化尺寸）
 local ScrollFrame = Instance.new("ScrollingFrame")
 ScrollFrame.Name = "ScrollFrame"
-ScrollFrame.Size = UDim2.new(1, -120 * UI_SCALE, 0, 250 * UI_SCALE)
-ScrollFrame.Position = UDim2.new(0, 120 * UI_SCALE, 0, 140 * UI_SCALE)
+ScrollFrame.Size = UDim2.new(1, -categoryWidth, 0, categoryHeight)
+ScrollFrame.Position = UDim2.new(0, categoryWidth, 0, 140 * UI_SCALE)
 ScrollFrame.BackgroundTransparency = 1
 ScrollFrame.ScrollBarThickness = 5
 ScrollFrame.ScrollingDirection = Enum.ScrollingDirection.Y
-ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 600 * UI_SCALE) -- 足够容纳所有内容
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 700 * UI_SCALE)
 ScrollFrame.ZIndex = 21
 ScrollFrame.Parent = MainPanel
 
@@ -300,7 +343,7 @@ local function createCategoryButton(name, position)
     button.TextSize = 18 * UI_SCALE
     button.Font = Enum.Font.GothamSemibold
     button.ZIndex = 22
-    button.Parent = CategoryPanel
+    button.Parent = CategoryContainer  -- 改为添加到分类容器中
     
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 10)
@@ -336,11 +379,13 @@ local homeButton = createCategoryButton("主页", 0)
 local generalButton = createCategoryButton("通用", 1)
 local doorsButton = createCategoryButton("DOORS", 2)
 local inkGameButton = createCategoryButton("墨水游戏", 3)
+local night99Button = createCategoryButton("99夜", 4)
 
 local homePage = createContentPage("Home")
 local generalPage = createContentPage("General")
 local doorsPage = createContentPage("Doors")
 local inkGamePage = createContentPage("InkGame")
+local night99Page = createContentPage("Night99")
 
 -- ===== 主页内容 =====
 local TimeLabel = Instance.new("TextLabel")
@@ -374,7 +419,7 @@ VersionLabel.Name = "VersionLabel"
 VersionLabel.Size = UDim2.new(1, -20 * UI_SCALE, 0, 30 * UI_SCALE)
 VersionLabel.Position = UDim2.new(0, 10 * UI_SCALE, 0, 120 * UI_SCALE)
 VersionLabel.BackgroundTransparency = 1
-VersionLabel.Text = "只因脚本 v4.9 ("..(IS_MOBILE and "手机版" or "电脑版")..")"
+VersionLabel.Text = "只因脚本 V0.1.6 ("..(IS_MOBILE and "手机测试版" or "电脑测试版")..")"
 VersionLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 VersionLabel.TextSize = 16 * UI_SCALE
 VersionLabel.Font = Enum.Font.Gotham
@@ -406,10 +451,11 @@ NoticeLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
 NoticeLabel.TextSize = 16 * UI_SCALE
 NoticeLabel.Font = Enum.Font.GothamBold
 NoticeLabel.TextXAlignment = Enum.TextXAlignment.Left
+NoticeLabel.TextWrapped = true  -- 自动换行
 NoticeLabel.ZIndex = 23
 NoticeLabel.Parent = NoticeBackground
 
--- ===== 通用页面（飞行控制） =====
+-- ===== 通用页面（飞行控制）=====
 local FlightStatus = Instance.new("TextLabel")
 FlightStatus.Name = "FlightStatus"
 FlightStatus.Size = UDim2.new(1, -20 * UI_SCALE, 0, 30 * UI_SCALE)
@@ -561,10 +607,10 @@ WalkSpeedValue.Font = Enum.Font.GothamBold
 WalkSpeedValue.ZIndex = 26
 WalkSpeedValue.Parent = WalkSpeedSlider
 
--- ===== 高级设置区域 =====
+-- ===== 高级设置区域（优化布局防止溢出）=====
 local AdvancedSettingsFrame = Instance.new("Frame")
 AdvancedSettingsFrame.Name = "AdvancedSettingsFrame"
-AdvancedSettingsFrame.Size = UDim2.new(0.9, 0, 0, 180 * UI_SCALE)
+AdvancedSettingsFrame.Size = UDim2.new(0.9, 0, 0, 240 * UI_SCALE)  -- 增加高度防止溢出
 AdvancedSettingsFrame.Position = UDim2.new(0.05, 0, 0, 270 * UI_SCALE)
 AdvancedSettingsFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 AdvancedSettingsFrame.ZIndex = 23
@@ -787,11 +833,37 @@ InkGameButton.MouseLeave:Connect(function()
     TweenService:Create(InkGameButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(30, 70, 120)}):Play()
 end)
 
+-- ===== 99夜页面 =====
+local Night99ScriptButton = Instance.new("TextButton")
+Night99ScriptButton.Name = "Night99ScriptButton"
+Night99ScriptButton.Size = UDim2.new(0.9, 0, 0, 60 * UI_SCALE)
+Night99ScriptButton.Position = UDim2.new(0.05, 0, 0.1, 0)
+Night99ScriptButton.BackgroundColor3 = Color3.fromRGB(120, 30, 70)
+Night99ScriptButton.Text = "99夜脚本"
+Night99ScriptButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+Night99ScriptButton.TextSize = 18 * UI_SCALE
+Night99ScriptButton.Font = Enum.Font.GothamBold
+Night99ScriptButton.ZIndex = 23
+Night99ScriptButton.Parent = night99Page
+
+local Night99ScriptButtonCorner = Instance.new("UICorner")
+Night99ScriptButtonCorner.CornerRadius = UDim.new(0, 10)
+Night99ScriptButtonCorner.Parent = Night99ScriptButton
+
+Night99ScriptButton.MouseEnter:Connect(function()
+    TweenService:Create(Night99ScriptButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(140, 50, 90)}):Play()
+end)
+
+Night99ScriptButton.MouseLeave:Connect(function()
+    TweenService:Create(Night99ScriptButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(120, 30, 70)}):Play()
+end)
+
 -- ===== 功能实现 =====
 -- 飞行状态变量
 local isFlying = false
 local flySpeed = 16
 local walkSpeed = 16
+local jumpHeight = 50
 local bodyVelocity
 local bodyGyro
 local flightConnections = {}
@@ -1247,12 +1319,32 @@ InkGameButton.MouseButton1Click:Connect(function()
     end
 end)
 
+-- 99夜按钮点击事件
+Night99ScriptButton.MouseButton1Click:Connect(function()
+    local originalText = Night99ScriptButton.Text
+    Night99ScriptButton.Text = "加载中..."
+    
+    local success, err = pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/gumanba/Scripts/main/Steal99Nights"))()
+    end)
+    
+    if not success then
+        warn("99夜脚本加载失败: "..tostring(err))
+        Night99ScriptButton.Text = "加载失败，点击重试"
+    else
+        Night99ScriptButton.Text = "已加载!"
+        task.wait(1)
+        Night99ScriptButton.Text = originalText
+    end
+end)
+
 -- 分类按钮点击事件
 homeButton.MouseButton1Click:Connect(function()
     homePage.Visible = true
     generalPage.Visible = false
     doorsPage.Visible = false
     inkGamePage.Visible = false
+    night99Page.Visible = false
     updateTime()
 end)
 
@@ -1261,6 +1353,7 @@ generalButton.MouseButton1Click:Connect(function()
     generalPage.Visible = true
     doorsPage.Visible = false
     inkGamePage.Visible = false
+    night99Page.Visible = false
     updateSpeedDisplays()
     updateSpinSpeedDisplay()
     updateJumpHeightDisplay()
@@ -1271,6 +1364,7 @@ doorsButton.MouseButton1Click:Connect(function()
     generalPage.Visible = false
     doorsPage.Visible = true
     inkGamePage.Visible = false
+    night99Page.Visible = false
 end)
 
 inkGameButton.MouseButton1Click:Connect(function()
@@ -1278,6 +1372,15 @@ inkGameButton.MouseButton1Click:Connect(function()
     generalPage.Visible = false
     doorsPage.Visible = false
     inkGamePage.Visible = true
+    night99Page.Visible = false
+end)
+
+night99Button.MouseButton1Click:Connect(function()
+    homePage.Visible = false
+    generalPage.Visible = false
+    doorsPage.Visible = false
+    inkGamePage.Visible = false
+    night99Page.Visible = true
 end)
 
 -- 关闭按钮点击事件
@@ -1288,12 +1391,15 @@ CloseButton.MouseButton1Click:Connect(function()
         -- 打开动画
         MainPanel.Size = UDim2.new(0, 0, 0, 0)
         MainPanel.Visible = true
-        TweenService:Create(MainPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 500 * UI_SCALE, 0, 400 * UI_SCALE)}):Play()
+        TweenService:Create(MainPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, mainPanelWidth, 0, mainPanelHeight)
+        }):Play()
         
         homePage.Visible = true
         generalPage.Visible = false
         doorsPage.Visible = false
         inkGamePage.Visible = false
+        night99Page.Visible = false
         updateTime()
     else
         -- 关闭动画
@@ -1311,12 +1417,15 @@ FloatingBall.MouseButton1Click:Connect(function()
         -- 打开动画
         MainPanel.Size = UDim2.new(0, 0, 0, 0)
         MainPanel.Visible = true
-        TweenService:Create(MainPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 500 * UI_SCALE, 0, 400 * UI_SCALE)}):Play()
+        TweenService:Create(MainPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, mainPanelWidth, 0, mainPanelHeight)
+        }):Play()
         
         homePage.Visible = true
         generalPage.Visible = false
         doorsPage.Visible = false
         inkGamePage.Visible = false
+        night99Page.Visible = false
         updateTime()
     else
         -- 关闭动画
@@ -1385,8 +1494,9 @@ local function initializeUI()
     generalPage.Visible = false
     doorsPage.Visible = false
     inkGamePage.Visible = false
+    night99Page.Visible = false
     MainPanel.Visible = false
-    MainPanel.Size = UDim2.new(0, 500 * UI_SCALE, 0, 400 * UI_SCALE)
+    MainPanel.Size = UDim2.new(0, mainPanelWidth, 0, mainPanelHeight)
 end
 
 -- 启动UI
