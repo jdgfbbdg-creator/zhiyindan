@@ -1,14 +1,23 @@
--- 只因脚本 v4.1
+-- 只因脚本 v4.2
 -- 作者：只因蛋
--- 功能：完整飞行控制(适配手机) + 速度调节 + DOORS脚本 + 可拖动悬浮球 + 公告系统 + 墨水游戏
+-- 功能：完整飞行控制(自动适配手机/PC) + 设备识别 + 自适应UI + DOORS脚本 + 可拖动悬浮球 + 墨水游戏
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local GuiService = game:GetService("GuiService")
 local ContentProvider = game:GetService("ContentProvider")
 
 local player = Players.LocalPlayer
+
+-- 设备类型检测
+local IS_MOBILE = UserInputService.TouchEnabled
+local IS_CONSOLE = UserInputService.GamepadEnabled and not IS_MOBILE
+local IS_DESKTOP = not IS_MOBILE and not IS_CONSOLE
+
+-- UI缩放因子 (手机设备缩小UI)
+local UI_SCALE = IS_MOBILE and 0.8 or 1
 
 -- 确保PlayerGui存在
 repeat task.wait() until player:FindFirstChild("PlayerGui")
@@ -24,8 +33,8 @@ ScreenGui.Parent = player.PlayerGui
 -- ========== 可拖动悬浮球 ==========
 local FloatingBall = Instance.new("ImageButton")
 FloatingBall.Name = "FloatingBall"
-FloatingBall.Size = UDim2.new(0, 80, 0, 80)
-FloatingBall.Position = UDim2.new(1, -100, 1, -200)
+FloatingBall.Size = UDim2.new(0, 80 * UI_SCALE, 0, 80 * UI_SCALE)
+FloatingBall.Position = UDim2.new(1, -100 * UI_SCALE, 1, -200 * UI_SCALE)
 FloatingBall.AnchorPoint = Vector2.new(1, 1)
 FloatingBall.Image = "rbxassetid://3570695787"
 FloatingBall.ImageColor3 = Color3.fromRGB(255, 215, 0)
@@ -58,7 +67,7 @@ BallText.Position = UDim2.new(0, 0, 0, 0)
 BallText.BackgroundTransparency = 1
 BallText.Text = "开启"
 BallText.TextColor3 = Color3.fromRGB(255, 255, 255)
-BallText.TextSize = 22
+BallText.TextSize = 22 * UI_SCALE
 BallText.Font = Enum.Font.GothamBold
 BallText.ZIndex = 11
 BallText.Parent = FloatingBall
@@ -97,7 +106,7 @@ end)
 -- ========== 主控制面板 ==========
 local MainPanel = Instance.new("Frame")
 MainPanel.Name = "MainPanel"
-MainPanel.Size = UDim2.new(0, 500, 0, 400)
+MainPanel.Size = UDim2.new(0, 500 * UI_SCALE, 0, 400 * UI_SCALE)
 MainPanel.Position = UDim2.new(0.5, 0, 0.5, 0)
 MainPanel.AnchorPoint = Vector2.new(0.5, 0.5)
 MainPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
@@ -128,12 +137,12 @@ MainShadow.Parent = MainPanel
 -- 面板标题
 local PanelTitle = Instance.new("TextLabel")
 PanelTitle.Name = "PanelTitle"
-PanelTitle.Size = UDim2.new(1, 0, 0, 40)
+PanelTitle.Size = UDim2.new(1, 0, 0, 40 * UI_SCALE)
 PanelTitle.Position = UDim2.new(0, 0, 0, 0)
 PanelTitle.BackgroundTransparency = 1
-PanelTitle.Text = "只因脚本面板"
+PanelTitle.Text = "只因脚本面板 ("..(IS_MOBILE and "手机" or IS_CONSOLE and "主机" or "电脑")..")"
 PanelTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
-PanelTitle.TextSize = 24
+PanelTitle.TextSize = 24 * UI_SCALE
 PanelTitle.Font = Enum.Font.GothamBold
 PanelTitle.ZIndex = 21
 PanelTitle.Parent = MainPanel
@@ -141,12 +150,12 @@ PanelTitle.Parent = MainPanel
 -- 关闭按钮
 local CloseButton = Instance.new("TextButton")
 CloseButton.Name = "CloseButton"
-CloseButton.Size = UDim2.new(0, 40, 0, 40)
-CloseButton.Position = UDim2.new(1, -50, 0, 5)
+CloseButton.Size = UDim2.new(0, 40 * UI_SCALE, 0, 40 * UI_SCALE)
+CloseButton.Position = UDim2.new(1, -50 * UI_SCALE, 0, 5 * UI_SCALE)
 CloseButton.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
 CloseButton.Text = "X"
 CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseButton.TextSize = 20
+CloseButton.TextSize = 20 * UI_SCALE
 CloseButton.Font = Enum.Font.GothamBold
 CloseButton.ZIndex = 22
 CloseButton.Parent = MainPanel
@@ -167,8 +176,8 @@ end)
 -- ========== 玩家信息区 ==========
 local PlayerInfo = Instance.new("Frame")
 PlayerInfo.Name = "PlayerInfo"
-PlayerInfo.Size = UDim2.new(1, -20, 0, 80)
-PlayerInfo.Position = UDim2.new(0, 10, 0, 50)
+PlayerInfo.Size = UDim2.new(1, -20 * UI_SCALE, 0, 80 * UI_SCALE)
+PlayerInfo.Position = UDim2.new(0, 10 * UI_SCALE, 0, 50 * UI_SCALE)
 PlayerInfo.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 PlayerInfo.ZIndex = 21
 PlayerInfo.Parent = MainPanel
@@ -180,8 +189,8 @@ PlayerInfoCorner.Parent = PlayerInfo
 -- 玩家头像
 local AvatarFrame = Instance.new("Frame")
 AvatarFrame.Name = "AvatarFrame"
-AvatarFrame.Size = UDim2.new(0, 60, 0, 60)
-AvatarFrame.Position = UDim2.new(0, 10, 0.5, -30)
+AvatarFrame.Size = UDim2.new(0, 60 * UI_SCALE, 0, 60 * UI_SCALE)
+AvatarFrame.Position = UDim2.new(0, 10 * UI_SCALE, 0.5, -30 * UI_SCALE)
 AvatarFrame.BackgroundTransparency = 1
 AvatarFrame.ZIndex = 22
 AvatarFrame.Parent = PlayerInfo
@@ -213,12 +222,12 @@ AvatarBorder.Parent = AvatarFrame
 -- 玩家信息文字
 local PlayerName = Instance.new("TextLabel")
 PlayerName.Name = "PlayerName"
-PlayerName.Size = UDim2.new(0.6, 0, 0, 20)
-PlayerName.Position = UDim2.new(0, 80, 0, 10)
+PlayerName.Size = UDim2.new(0.6, 0, 0, 20 * UI_SCALE)
+PlayerName.Position = UDim2.new(0, 80 * UI_SCALE, 0, 10 * UI_SCALE)
 PlayerName.BackgroundTransparency = 1
 PlayerName.Text = "玩家: "..player.Name
 PlayerName.TextColor3 = Color3.fromRGB(255, 255, 255)
-PlayerName.TextSize = 16
+PlayerName.TextSize = 16 * UI_SCALE
 PlayerName.Font = Enum.Font.Gotham
 PlayerName.TextXAlignment = Enum.TextXAlignment.Left
 PlayerName.ZIndex = 22
@@ -226,12 +235,12 @@ PlayerName.Parent = PlayerInfo
 
 local WelcomeText = Instance.new("TextLabel")
 WelcomeText.Name = "WelcomeText"
-WelcomeText.Size = UDim2.new(0.6, 0, 0, 20)
-WelcomeText.Position = UDim2.new(0, 80, 0, 35)
+WelcomeText.Size = UDim2.new(0.6, 0, 0, 20 * UI_SCALE)
+WelcomeText.Position = UDim2.new(0, 80 * UI_SCALE, 0, 35 * UI_SCALE)
 WelcomeText.BackgroundTransparency = 1
 WelcomeText.Text = "欢迎使用只因脚本!"
 WelcomeText.TextColor3 = Color3.fromRGB(200, 200, 255)
-WelcomeText.TextSize = 14
+WelcomeText.TextSize = 14 * UI_SCALE
 WelcomeText.Font = Enum.Font.Gotham
 WelcomeText.TextXAlignment = Enum.TextXAlignment.Left
 WelcomeText.ZIndex = 22
@@ -240,12 +249,12 @@ WelcomeText.Parent = PlayerInfo
 -- 白名单状态
 local WhitelistStatus = Instance.new("TextLabel")
 WhitelistStatus.Name = "WhitelistStatus"
-WhitelistStatus.Size = UDim2.new(0.6, 0, 0, 20)
-WhitelistStatus.Position = UDim2.new(0, 80, 0, 60)
+WhitelistStatus.Size = UDim2.new(0.6, 0, 0, 20 * UI_SCALE)
+WhitelistStatus.Position = UDim2.new(0, 80 * UI_SCALE, 0, 60 * UI_SCALE)
 WhitelistStatus.BackgroundTransparency = 1
 WhitelistStatus.Text = "白名单状态: 已授权"
 WhitelistStatus.TextColor3 = Color3.fromRGB(0, 255, 0)
-WhitelistStatus.TextSize = 14
+WhitelistStatus.TextSize = 14 * UI_SCALE
 WhitelistStatus.Font = Enum.Font.Gotham
 WhitelistStatus.TextXAlignment = Enum.TextXAlignment.Left
 WhitelistStatus.ZIndex = 22
@@ -254,8 +263,8 @@ WhitelistStatus.Parent = PlayerInfo
 -- ========== 分类系统 ==========
 local CategoryPanel = Instance.new("Frame")
 CategoryPanel.Name = "CategoryPanel"
-CategoryPanel.Size = UDim2.new(0, 120, 0, 250)
-CategoryPanel.Position = UDim2.new(0, 0, 0, 140)
+CategoryPanel.Size = UDim2.new(0, 120 * UI_SCALE, 0, 250 * UI_SCALE)
+CategoryPanel.Position = UDim2.new(0, 0, 0, 140 * UI_SCALE)
 CategoryPanel.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 CategoryPanel.BackgroundTransparency = 0.1
 CategoryPanel.ZIndex = 21
@@ -267,8 +276,8 @@ CategoryCorner.Parent = CategoryPanel
 
 local ContentPanel = Instance.new("Frame")
 ContentPanel.Name = "ContentPanel"
-ContentPanel.Size = UDim2.new(1, -120, 0, 250)
-ContentPanel.Position = UDim2.new(0, 120, 0, 140)
+ContentPanel.Size = UDim2.new(1, -120 * UI_SCALE, 0, 250 * UI_SCALE)
+ContentPanel.Position = UDim2.new(0, 120 * UI_SCALE, 0, 140 * UI_SCALE)
 ContentPanel.BackgroundTransparency = 1
 ContentPanel.ZIndex = 21
 ContentPanel.Parent = MainPanel
@@ -277,12 +286,12 @@ ContentPanel.Parent = MainPanel
 local function createCategoryButton(name, position)
     local button = Instance.new("TextButton")
     button.Name = name.."Button"
-    button.Size = UDim2.new(0.9, 0, 0, 50)
-    button.Position = UDim2.new(0.05, 0, 0, position * 60 + 10)
+    button.Size = UDim2.new(0.9, 0, 0, 50 * UI_SCALE)
+    button.Position = UDim2.new(0.05, 0, 0, position * 60 * UI_SCALE + 10 * UI_SCALE)
     button.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
     button.Text = name
     button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.TextSize = 18
+    button.TextSize = 18 * UI_SCALE
     button.Font = Enum.Font.GothamSemibold
     button.ZIndex = 22
     button.Parent = CategoryPanel
@@ -320,22 +329,22 @@ end
 local homeButton = createCategoryButton("主页", 0)
 local generalButton = createCategoryButton("通用", 1)
 local doorsButton = createCategoryButton("DOORS", 2)
-local inkGameButton = createCategoryButton("墨水游戏", 3) -- 新增墨水游戏按钮
+local inkGameButton = createCategoryButton("墨水游戏", 3)
 
 local homePage = createContentPage("Home")
 local generalPage = createContentPage("General")
 local doorsPage = createContentPage("Doors")
-local inkGamePage = createContentPage("InkGame") -- 新增墨水游戏页面
+local inkGamePage = createContentPage("InkGame")
 
 -- ========== 主页内容 ==========
 local TimeLabel = Instance.new("TextLabel")
 TimeLabel.Name = "TimeLabel"
-TimeLabel.Size = UDim2.new(1, -20, 0, 30)
-TimeLabel.Position = UDim2.new(0, 10, 0, 20)
+TimeLabel.Size = UDim2.new(1, -20 * UI_SCALE, 0, 30 * UI_SCALE)
+TimeLabel.Position = UDim2.new(0, 10 * UI_SCALE, 0, 20 * UI_SCALE)
 TimeLabel.BackgroundTransparency = 1
 TimeLabel.Text = "当前时间: 加载中..."
 TimeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TimeLabel.TextSize = 18
+TimeLabel.TextSize = 18 * UI_SCALE
 TimeLabel.Font = Enum.Font.Gotham
 TimeLabel.TextXAlignment = Enum.TextXAlignment.Left
 TimeLabel.ZIndex = 23
@@ -343,12 +352,12 @@ TimeLabel.Parent = homePage
 
 local CreatorLabel = Instance.new("TextLabel")
 CreatorLabel.Name = "CreatorLabel"
-CreatorLabel.Size = UDim2.new(1, -20, 0, 50)
-CreatorLabel.Position = UDim2.new(0, 10, 0, 60)
+CreatorLabel.Size = UDim2.new(1, -20 * UI_SCALE, 0, 50 * UI_SCALE)
+CreatorLabel.Position = UDim2.new(0, 10 * UI_SCALE, 0, 60 * UI_SCALE)
 CreatorLabel.BackgroundTransparency = 1
 CreatorLabel.Text = "By 只因蛋"
 CreatorLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-CreatorLabel.TextSize = 24
+CreatorLabel.TextSize = 24 * UI_SCALE
 CreatorLabel.Font = Enum.Font.GothamBold
 CreatorLabel.TextXAlignment = Enum.TextXAlignment.Left
 CreatorLabel.ZIndex = 23
@@ -356,12 +365,12 @@ CreatorLabel.Parent = homePage
 
 local VersionLabel = Instance.new("TextLabel")
 VersionLabel.Name = "VersionLabel"
-VersionLabel.Size = UDim2.new(1, -20, 0, 30)
-VersionLabel.Position = UDim2.new(0, 10, 0, 120)
+VersionLabel.Size = UDim2.new(1, -20 * UI_SCALE, 0, 30 * UI_SCALE)
+VersionLabel.Position = UDim2.new(0, 10 * UI_SCALE, 0, 120 * UI_SCALE)
 VersionLabel.BackgroundTransparency = 1
-VersionLabel.Text = "只因脚本 v4.1"
+VersionLabel.Text = "只因脚本 v4.2 ("..(IS_MOBILE and "手机版" or "电脑版")..")"
 VersionLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-VersionLabel.TextSize = 16
+VersionLabel.TextSize = 16 * UI_SCALE
 VersionLabel.Font = Enum.Font.Gotham
 VersionLabel.TextXAlignment = Enum.TextXAlignment.Left
 VersionLabel.ZIndex = 23
@@ -370,8 +379,8 @@ VersionLabel.Parent = homePage
 -- 公告区域
 local NoticeBackground = Instance.new("Frame")
 NoticeBackground.Name = "NoticeBackground"
-NoticeBackground.Size = UDim2.new(1, -20, 0, 60)
-NoticeBackground.Position = UDim2.new(0, 10, 0, 160)
+NoticeBackground.Size = UDim2.new(1, -20 * UI_SCALE, 0, 60 * UI_SCALE)
+NoticeBackground.Position = UDim2.new(0, 10 * UI_SCALE, 0, 160 * UI_SCALE)
 NoticeBackground.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
 NoticeBackground.BackgroundTransparency = 0.1
 NoticeBackground.ZIndex = 22
@@ -383,12 +392,12 @@ NoticeCorner.Parent = NoticeBackground
 
 local NoticeLabel = Instance.new("TextLabel")
 NoticeLabel.Name = "NoticeLabel"
-NoticeLabel.Size = UDim2.new(1, -10, 1, -10)
-NoticeLabel.Position = UDim2.new(0, 5, 0, 5)
+NoticeLabel.Size = UDim2.new(1, -10 * UI_SCALE, 1, -10 * UI_SCALE)
+NoticeLabel.Position = UDim2.new(0, 5 * UI_SCALE, 0, 5 * UI_SCALE)
 NoticeLabel.BackgroundTransparency = 1
 NoticeLabel.Text = "此脚本在测试阶段，禁止外泄"
 NoticeLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
-NoticeLabel.TextSize = 16
+NoticeLabel.TextSize = 16 * UI_SCALE
 NoticeLabel.Font = Enum.Font.GothamBold
 NoticeLabel.TextXAlignment = Enum.TextXAlignment.Left
 NoticeLabel.ZIndex = 23
@@ -397,12 +406,12 @@ NoticeLabel.Parent = NoticeBackground
 -- ========== 通用页面（飞行控制） ==========
 local FlightStatus = Instance.new("TextLabel")
 FlightStatus.Name = "FlightStatus"
-FlightStatus.Size = UDim2.new(1, -20, 0, 30)
-FlightStatus.Position = UDim2.new(0, 10, 0, 20)
+FlightStatus.Size = UDim2.new(1, -20 * UI_SCALE, 0, 30 * UI_SCALE)
+FlightStatus.Position = UDim2.new(0, 10 * UI_SCALE, 0, 20 * UI_SCALE)
 FlightStatus.BackgroundTransparency = 1
 FlightStatus.Text = "飞行: 关闭"
 FlightStatus.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlightStatus.TextSize = 18
+FlightStatus.TextSize = 18 * UI_SCALE
 FlightStatus.Font = Enum.Font.GothamBold
 FlightStatus.TextXAlignment = Enum.TextXAlignment.Left
 FlightStatus.ZIndex = 23
@@ -410,12 +419,12 @@ FlightStatus.Parent = generalPage
 
 local ToggleButton = Instance.new("TextButton")
 ToggleButton.Name = "ToggleButton"
-ToggleButton.Size = UDim2.new(0.8, 0, 0, 50)
-ToggleButton.Position = UDim2.new(0.1, 0, 0, 60)
+ToggleButton.Size = UDim2.new(0.8, 0, 0, 50 * UI_SCALE)
+ToggleButton.Position = UDim2.new(0.1, 0, 0, 60 * UI_SCALE)
 ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
 ToggleButton.Text = "开启飞行"
 ToggleButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-ToggleButton.TextSize = 18
+ToggleButton.TextSize = 18 * UI_SCALE
 ToggleButton.Font = Enum.Font.GothamBold
 ToggleButton.ZIndex = 23
 ToggleButton.Parent = generalPage
@@ -436,8 +445,8 @@ end)
 -- 速度控制区域
 local SpeedControlFrame = Instance.new("Frame")
 SpeedControlFrame.Name = "SpeedControlFrame"
-SpeedControlFrame.Size = UDim2.new(0.9, 0, 0, 120)
-SpeedControlFrame.Position = UDim2.new(0.05, 0, 0, 130)
+SpeedControlFrame.Size = UDim2.new(0.9, 0, 0, 120 * UI_SCALE)
+SpeedControlFrame.Position = UDim2.new(0.05, 0, 0, 130 * UI_SCALE)
 SpeedControlFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 SpeedControlFrame.ZIndex = 23
 SpeedControlFrame.Parent = generalPage
@@ -449,12 +458,12 @@ SpeedControlCorner.Parent = SpeedControlFrame
 -- 飞行速度控制
 local FlightSpeedLabel = Instance.new("TextLabel")
 FlightSpeedLabel.Name = "FlightSpeedLabel"
-FlightSpeedLabel.Size = UDim2.new(1, -10, 0, 25)
-FlightSpeedLabel.Position = UDim2.new(0, 5, 0, 10)
+FlightSpeedLabel.Size = UDim2.new(1, -10 * UI_SCALE, 0, 25 * UI_SCALE)
+FlightSpeedLabel.Position = UDim2.new(0, 5 * UI_SCALE, 0, 10 * UI_SCALE)
 FlightSpeedLabel.BackgroundTransparency = 1
 FlightSpeedLabel.Text = "飞行速度: 16"
 FlightSpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlightSpeedLabel.TextSize = 16
+FlightSpeedLabel.TextSize = 16 * UI_SCALE
 FlightSpeedLabel.Font = Enum.Font.GothamSemibold
 FlightSpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
 FlightSpeedLabel.ZIndex = 24
@@ -462,8 +471,8 @@ FlightSpeedLabel.Parent = SpeedControlFrame
 
 local FlightSpeedSlider = Instance.new("Frame")
 FlightSpeedSlider.Name = "FlightSpeedSlider"
-FlightSpeedSlider.Size = UDim2.new(1, -10, 0, 20)
-FlightSpeedSlider.Position = UDim2.new(0, 5, 0, 40)
+FlightSpeedSlider.Size = UDim2.new(1, -10 * UI_SCALE, 0, 20 * UI_SCALE)
+FlightSpeedSlider.Position = UDim2.new(0, 5 * UI_SCALE, 0, 40 * UI_SCALE)
 FlightSpeedSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
 FlightSpeedSlider.ZIndex = 24
 FlightSpeedSlider.Parent = SpeedControlFrame
@@ -491,7 +500,7 @@ FlightSpeedValue.Position = UDim2.new(0, 0, 0, 0)
 FlightSpeedValue.BackgroundTransparency = 1
 FlightSpeedValue.Text = "16"
 FlightSpeedValue.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlightSpeedValue.TextSize = 14
+FlightSpeedValue.TextSize = 14 * UI_SCALE
 FlightSpeedValue.Font = Enum.Font.GothamBold
 FlightSpeedValue.ZIndex = 26
 FlightSpeedValue.Parent = FlightSpeedSlider
@@ -499,12 +508,12 @@ FlightSpeedValue.Parent = FlightSpeedSlider
 -- 行走速度控制
 local WalkSpeedLabel = Instance.new("TextLabel")
 WalkSpeedLabel.Name = "WalkSpeedLabel"
-WalkSpeedLabel.Size = UDim2.new(1, -10, 0, 25)
-WalkSpeedLabel.Position = UDim2.new(0, 5, 0, 70)
+WalkSpeedLabel.Size = UDim2.new(1, -10 * UI_SCALE, 0, 25 * UI_SCALE)
+WalkSpeedLabel.Position = UDim2.new(0, 5 * UI_SCALE, 0, 70 * UI_SCALE)
 WalkSpeedLabel.BackgroundTransparency = 1
 WalkSpeedLabel.Text = "行走速度: 16"
 WalkSpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-WalkSpeedLabel.TextSize = 16
+WalkSpeedLabel.TextSize = 16 * UI_SCALE
 WalkSpeedLabel.Font = Enum.Font.GothamSemibold
 WalkSpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
 WalkSpeedLabel.ZIndex = 24
@@ -512,8 +521,8 @@ WalkSpeedLabel.Parent = SpeedControlFrame
 
 local WalkSpeedSlider = Instance.new("Frame")
 WalkSpeedSlider.Name = "WalkSpeedSlider"
-WalkSpeedSlider.Size = UDim2.new(1, -10, 0, 20)
-WalkSpeedSlider.Position = UDim2.new(0, 5, 0, 95)
+WalkSpeedSlider.Size = UDim2.new(1, -10 * UI_SCALE, 0, 20 * UI_SCALE)
+WalkSpeedSlider.Position = UDim2.new(0, 5 * UI_SCALE, 0, 95 * UI_SCALE)
 WalkSpeedSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
 WalkSpeedSlider.ZIndex = 24
 WalkSpeedSlider.Parent = SpeedControlFrame
@@ -541,7 +550,7 @@ WalkSpeedValue.Position = UDim2.new(0, 0, 0, 0)
 WalkSpeedValue.BackgroundTransparency = 1
 WalkSpeedValue.Text = "16"
 WalkSpeedValue.TextColor3 = Color3.fromRGB(255, 255, 255)
-WalkSpeedValue.TextSize = 14
+WalkSpeedValue.TextSize = 14 * UI_SCALE
 WalkSpeedValue.Font = Enum.Font.GothamBold
 WalkSpeedValue.ZIndex = 26
 WalkSpeedValue.Parent = WalkSpeedSlider
@@ -549,12 +558,12 @@ WalkSpeedValue.Parent = WalkSpeedSlider
 -- ========== DOORS页面 ==========
 local DoorsScriptButton = Instance.new("TextButton")
 DoorsScriptButton.Name = "DoorsScriptButton"
-DoorsScriptButton.Size = UDim2.new(0.9, 0, 0, 60)
+DoorsScriptButton.Size = UDim2.new(0.9, 0, 0, 60 * UI_SCALE)
 DoorsScriptButton.Position = UDim2.new(0.05, 0, 0.1, 0)
 DoorsScriptButton.BackgroundColor3 = Color3.fromRGB(70, 30, 120)
 DoorsScriptButton.Text = "Doors脚本"
 DoorsScriptButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-DoorsScriptButton.TextSize = 18
+DoorsScriptButton.TextSize = 18 * UI_SCALE
 DoorsScriptButton.Font = Enum.Font.GothamBold
 DoorsScriptButton.ZIndex = 23
 DoorsScriptButton.Parent = doorsPage
@@ -575,12 +584,12 @@ end)
 -- ========== 墨水游戏页面 ==========
 local InkGameButton = Instance.new("TextButton")
 InkGameButton.Name = "InkGameButton"
-InkGameButton.Size = UDim2.new(0.9, 0, 0, 60)
+InkGameButton.Size = UDim2.new(0.9, 0, 0, 60 * UI_SCALE)
 InkGameButton.Position = UDim2.new(0.05, 0, 0.1, 0)
 InkGameButton.BackgroundColor3 = Color3.fromRGB(30, 70, 120)
 InkGameButton.Text = "墨水游戏脚本"
 InkGameButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-InkGameButton.TextSize = 18
+InkGameButton.TextSize = 18 * UI_SCALE
 InkGameButton.Font = Enum.Font.GothamBold
 InkGameButton.ZIndex = 23
 InkGameButton.Parent = inkGamePage
@@ -752,6 +761,48 @@ local function toggleFlight()
                 direction = direction - Vector3.new(0, 1, 0) 
             end
             
+            -- 手机触摸控制 (添加虚拟摇杆支持)
+            if IS_MOBILE then
+                -- 检测屏幕左侧触摸 (模拟摇杆)
+                for _, input in pairs(UserInputService:GetTouches()) do
+                    if input.Position.X < GuiService:GetScreenResolution().X / 2 then
+                        local touchPos = input.Position
+                        local center = Vector2.new(GuiService:GetScreenResolution().X / 4, GuiService:GetScreenResolution().Y / 2)
+                        local delta = (touchPos - center) / (GuiService:GetScreenResolution().Y / 4)
+                        
+                        -- 左右移动
+                        if delta.X > 0.2 then
+                            direction = direction + cf.RightVector * math.clamp(delta.X, 0, 1)
+                        elseif delta.X < -0.2 then
+                            direction = direction - cf.RightVector * math.clamp(-delta.X, 0, 1)
+                        end
+                        
+                        -- 前后移动
+                        if delta.Y > 0.2 then
+                            direction = direction - cf.LookVector * math.clamp(delta.Y, 0, 1)
+                        elseif delta.Y < -0.2 then
+                            direction = direction + cf.LookVector * math.clamp(-delta.Y, 0, 1)
+                        end
+                    end
+                end
+                
+                -- 检测屏幕右侧触摸 (上升/下降)
+                for _, input in pairs(UserInputService:GetTouches()) do
+                    if input.Position.X > GuiService:GetScreenResolution().X / 2 then
+                        local touchPos = input.Position
+                        local center = Vector2.new(GuiService:GetScreenResolution().X * 3/4, GuiService:GetScreenResolution().Y / 2)
+                        local delta = (touchPos - center) / (GuiService:GetScreenResolution().Y / 4)
+                        
+                        -- 上升/下降
+                        if delta.Y > 0.2 then
+                            direction = direction - Vector3.new(0, 1, 0) * math.clamp(delta.Y, 0, 1)
+                        elseif delta.Y < -0.2 then
+                            direction = direction + Vector3.new(0, 1, 0) * math.clamp(-delta.Y, 0, 1)
+                        end
+                    end
+                end
+            end
+            
             -- 标准化方向并应用速度
             if direction.Magnitude > 0 then
                 direction = direction.Unit * flySpeed
@@ -797,7 +848,7 @@ local function toggleMainPanel()
         -- 打开动画
         MainPanel.Size = UDim2.new(0, 0, 0, 0)
         MainPanel.Visible = true
-        TweenService:Create(MainPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 500, 0, 400)}):Play()
+        TweenService:Create(MainPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 500 * UI_SCALE, 0, 400 * UI_SCALE)}):Play()
         
         homePage.Visible = true
         generalPage.Visible = false
@@ -974,7 +1025,7 @@ local function initializeUI()
     doorsPage.Visible = false
     inkGamePage.Visible = false
     MainPanel.Visible = false
-    MainPanel.Size = UDim2.new(0, 500, 0, 400)
+    MainPanel.Size = UDim2.new(0, 500 * UI_SCALE, 0, 400 * UI_SCALE)
 end
 
 -- 角色变化处理
